@@ -1,4 +1,4 @@
-import asyncio
+import time
 
 from winsdk.windows.media.control import (
     GlobalSystemMediaTransportControlsSessionManager,
@@ -12,43 +12,29 @@ STATUS_NAMES = {
     GlobalSystemMediaTransportControlsSessionPlaybackStatus.CLOSED: "CLOSED",
 }
 
-def format_time(seconds):
-    """Convert seconds to MM:SS."""
-
-    if seconds is None:
-        return "--:--"
-
-    seconds = max(0, int(seconds))
-
-    minutes = seconds // 60
-    seconds = seconds % 60
-
-    return f"{minutes:02d}:{seconds:02d}"
 
 class MediaSessionReader:
-    """Reads media information from the active Brave session."""
-
     def __init__(self):
         self.manager = None
 
-    async def initialize(self):
-        """Initialize Windows Media Session manager."""
+        # Local position tracking
+        self.base_position = 0.0
+        self.base_time = None
+        self.last_status = None
+        self.last_track = None
 
+    async def initialize(self):
         self.manager = await (
-            GlobalSystemMediaTransportControlsSessionManager
-            .request_async()
+            GlobalSystemMediaTransportControlsSessionManager.request_async()
         )
 
     async def get_brave_session(self):
-        """Find the Brave media session."""
-
         if self.manager is None:
             await self.initialize()
 
         sessions = self.manager.get_sessions()
 
         for session in sessions:
-
             try:
                 source = session.source_app_user_model_id
 
@@ -61,8 +47,6 @@ class MediaSessionReader:
         return None
 
     async def get_current_state(self):
-        """Return the current Brave playback state."""
-
         session = await self.get_brave_session()
 
         if session is None:
@@ -71,7 +55,6 @@ class MediaSessionReader:
         properties = await session.try_get_media_properties_async()
 
         playback_info = session.get_playback_info()
-
         timeline = session.get_timeline_properties()
 
         title = properties.title or "Unknown"
@@ -83,11 +66,85 @@ class MediaSessionReader:
             str(playback_info.playback_status),
         )
 
-        position = timeline.position.total_seconds()
-
         duration = (
             timeline.end_time - timeline.start_time
         ).total_seconds()
+
+        # Raw position reported by Windows.
+        raw_position = timeline.position.total_seconds()
+
+        track = (
+            title,
+            artist,
+            album,
+        )
+
+        now = time.monotonic()
+
+        # --------------------------------------------------
+        # New track
+        # --------------------------------------------------
+
+        if track != self.last_track:
+
+            self.last_track = track
+
+            self.base_position = max(
+                0.0,
+                raw_position,
+            )
+
+            self.base_time = now
+
+        # --------------------------------------------------
+        # Playback state changed
+        # --------------------------------------------------
+
+        elif status != self.last_status:
+
+            if status == "PLAYING":
+                # Resume from the last known position.
+                self.base_time = now
+
+            elif status != "PLAYING":
+                # Freeze the position when paused/stopped.
+                if self.base_time is not None:
+                    self.base_position += (
+                        now - self.base_time
+                    )
+
+                    self.base_position = min(
+                        self.base_position,
+                        duration,
+                    )
+
+                self.base_time = now
+
+        # --------------------------------------------------
+        # Calculate current position
+        # --------------------------------------------------
+
+        if status == "PLAYING":
+
+            if self.base_time is None:
+                self.base_time = now
+
+            position = (
+                self.base_position
+                + (now - self.base_time)
+            )
+
+        else:
+
+            position = self.base_position
+
+        # Clamp position.
+        position = max(
+            0.0,
+            min(position, duration),
+        )
+
+        self.last_status = status
 
         return {
             "player": "Brave",
@@ -99,18 +156,35 @@ class MediaSessionReader:
             "duration": duration,
         }
 
+
 async def test():
 
     reader = MediaSessionReader()
 
-    state = await reader.get_current_state()
+    while True:
 
-    if state is None:
-        print("No Brave media session found.")
-        return
+        state = await reader.get_current_state()
 
-    print(state)
+        if state is None:
+            print("No Brave media session found.")
+
+        else:
+            print(
+                f"{state['status']:8} "
+                f"{state['position']:7.2f} / "
+                f"{state['duration']:.2f}"
+            )
+
+        import asyncio
+        await asyncio.sleep(1)
 
 
 if __name__ == "__main__":
-    asyncio.run(test())
+
+    import asyncio
+
+    try:
+        asyncio.run(test())
+
+    except KeyboardInterrupt:
+        print("\nStopped.")
