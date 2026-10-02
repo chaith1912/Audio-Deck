@@ -12,15 +12,16 @@ from protocol import (
     welcome_message,
 )
 
-
 HOST = "0.0.0.0"
 PORT = 8765
 
+POSITION_INTERVAL = 1.0
+
 
 class AudioDeckWebSocketServer:
-
     def __init__(self):
         self.media_reader = MediaSessionReader()
+
         self.clients = set()
 
         self.current_state = None
@@ -42,14 +43,13 @@ class AudioDeckWebSocketServer:
             f"{websocket.remote_address}"
         )
 
-        # Send welcome message
+        # Tell the client which protocol we're using.
         await websocket.send(
             json.dumps(welcome_message())
         )
 
-        # Immediately send current state
+        # Immediately send the current complete state.
         if self.current_state is not None:
-
             await websocket.send(
                 json.dumps(
                     state_message(self.current_state)
@@ -57,7 +57,6 @@ class AudioDeckWebSocketServer:
             )
 
     async def unregister_client(self, websocket):
-
         self.clients.discard(websocket)
 
         print(
@@ -66,7 +65,6 @@ class AudioDeckWebSocketServer:
         )
 
     async def send_to_all(self, message):
-
         if not self.clients:
             return
 
@@ -75,7 +73,6 @@ class AudioDeckWebSocketServer:
         disconnected = set()
 
         for client in self.clients:
-
             try:
                 await client.send(data)
 
@@ -86,13 +83,10 @@ class AudioDeckWebSocketServer:
             self.clients.discard(client)
 
     async def handle_client(self, websocket):
-
         await self.register_client(websocket)
 
         try:
-
             async for message in websocket:
-
                 print(
                     f"[WebSocket] Received: {message}"
                 )
@@ -101,11 +95,9 @@ class AudioDeckWebSocketServer:
             pass
 
         finally:
-
             await self.unregister_client(websocket)
 
     async def update_media_state(self):
-
         state = await self.media_reader.get_current_state()
 
         if state is None:
@@ -119,10 +111,7 @@ class AudioDeckWebSocketServer:
 
         status = state["status"]
 
-        # ---------------------------------------
-        # First state
-        # ---------------------------------------
-
+        # First state received.
         if self.current_state is None:
 
             self.current_state = state
@@ -135,10 +124,7 @@ class AudioDeckWebSocketServer:
 
             return
 
-        # ---------------------------------------
-        # Track changed
-        # ---------------------------------------
-
+        # Track changed.
         if track != self.current_track:
 
             self.current_track = track
@@ -147,10 +133,7 @@ class AudioDeckWebSocketServer:
                 track_message(state)
             )
 
-        # ---------------------------------------
-        # Playback changed
-        # ---------------------------------------
-
+        # Playback state changed.
         if status != self.current_status:
 
             self.current_status = status
@@ -159,27 +142,49 @@ class AudioDeckWebSocketServer:
                 playback_message(state)
             )
 
-        # ---------------------------------------
-        # Update current state
-        # ---------------------------------------
-
+        # Always keep the latest state internally.
         self.current_state = state
 
     async def media_monitor(self):
+        while True:
+
+            try:
+                await self.update_media_state()
+
+            except Exception as e:
+                print(f"[Media] Error: {e}")
+
+            await asyncio.sleep(POSITION_INTERVAL)
+
+    async def position_monitor(self):
+        """
+        Sends periodic position synchronization.
+
+        This is intentionally separate from track/playback
+        events so the Android client can smoothly interpolate
+        between synchronization points.
+        """
 
         while True:
 
             try:
 
-                await self.update_media_state()
+                if self.current_state is not None:
+
+                    state = await self.media_reader.get_current_state()
+
+                    if state is not None:
+
+                        self.current_state = state
+
+                        await self.send_to_all(
+                            position_message(state)
+                        )
 
             except Exception as e:
+                print(f"[Position] Error: {e}")
 
-                print(
-                    f"[Media] Error: {e}"
-                )
-
-            await asyncio.sleep(1)
+            await asyncio.sleep(POSITION_INTERVAL)
 
     async def start(self):
 
@@ -190,10 +195,13 @@ class AudioDeckWebSocketServer:
         print("             AUDIO DECK SERVER")
         print("=" * 60)
         print()
+
         print(f"WebSocket: ws://0.0.0.0:{PORT}")
         print("Monitoring Brave...")
+        print("Position synchronization enabled.")
         print("Waiting for clients...")
         print()
+
         print("Press Ctrl+C to stop.")
         print()
 
@@ -203,7 +211,10 @@ class AudioDeckWebSocketServer:
             PORT,
         ):
 
-            await self.media_monitor()
+            await asyncio.gather(
+                self.media_monitor(),
+                self.position_monitor(),
+            )
 
 
 async def main():
