@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.chaithanya.audiodeck.ui.theme.AudioDeckTheme
@@ -21,24 +21,68 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         audioDeckWebSocket = AudioDeckWebSocket(
+
             onMessage = { message ->
-                Log.d("AudioDeck", "Received: $message")
+
+                Log.d(
+                    "AudioDeck",
+                    "Raw message: $message"
+                )
+
+                val state =
+                    AudioDeckMessageParser.parse(message)
+
+                if (state != null) {
+
+                    Log.d(
+                        "AudioDeck",
+                        "Title: ${state.title}"
+                    )
+
+                    Log.d(
+                        "AudioDeck",
+                        "Artist: ${state.artist}"
+                    )
+
+                    Log.d(
+                        "AudioDeck",
+                        "Status: ${state.status}"
+                    )
+
+                    Log.d(
+                        "AudioDeck",
+                        "Position: ${state.position}"
+                    )
+
+                    Log.d(
+                        "AudioDeck",
+                        "Artwork received: ${state.artwork != null}"
+                    )
+                }
             },
 
             onConnected = {
-                Log.d("AudioDeck", "CONNECTED TO PC")
+                Log.d(
+                    "AudioDeck",
+                    "CONNECTED TO PC"
+                )
             },
 
             onDisconnected = {
-                Log.d("AudioDeck", "DISCONNECTED FROM PC")
+                Log.d(
+                    "AudioDeck",
+                    "DISCONNECTED FROM PC"
+                )
             },
 
             onError = { error ->
-                Log.e("AudioDeck", "WebSocket error: $error")
+                Log.e(
+                    "AudioDeck",
+                    "WebSocket error: $error"
+                )
             }
         )
 
-        // PC Wi-Fi address
         audioDeckWebSocket.connect(
             "10.138.245.32"
         )
@@ -64,13 +108,7 @@ fun ConnectionScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-
-        Text(
-            text = "AUDIO DECK"
-        )
-
-        Text(
-            text = "Connecting to PC..."
-        )
+        Text(text = "AUDIO DECK")
+        Text(text = "Connecting to PC...")
     }
 }
