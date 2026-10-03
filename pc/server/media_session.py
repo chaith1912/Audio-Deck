@@ -54,6 +54,10 @@ class MediaSessionReader:
 
         properties = await session.try_get_media_properties_async()
 
+        #temporary test to see if we can get the thumbnail
+        thumbnail = properties.thumbnail
+        print("Thumbnail:", thumbnail)
+
         playback_info = session.get_playback_info()
         timeline = session.get_timeline_properties()
 
