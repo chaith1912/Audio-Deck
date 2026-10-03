@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.chaithanya.audiodeck.ui.theme.AudioDeckTheme
@@ -19,6 +19,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        setContent {
+            AudioDeckTheme {
+                AudioDeckScreen()
+            }
+        }
 
         audioDeckWebSocket = AudioDeckWebSocket(
 
@@ -46,18 +52,12 @@ class MainActivity : ComponentActivity() {
 
                     Log.d(
                         "AudioDeck",
-                        "Status: ${state.status}"
-                    )
-
-                    Log.d(
-                        "AudioDeck",
-                        "Position: ${state.position}"
-                    )
-
-                    Log.d(
-                        "AudioDeck",
                         "Artwork received: ${state.artwork != null}"
                     )
+
+                    runOnUiThread {
+                        AudioDeckStateHolder.update(state)
+                    }
                 }
             },
 
@@ -66,6 +66,10 @@ class MainActivity : ComponentActivity() {
                     "AudioDeck",
                     "CONNECTED TO PC"
                 )
+
+                runOnUiThread {
+                    AudioDeckStateHolder.setConnected(true)
+                }
             },
 
             onDisconnected = {
@@ -73,6 +77,10 @@ class MainActivity : ComponentActivity() {
                     "AudioDeck",
                     "DISCONNECTED FROM PC"
                 )
+
+                runOnUiThread {
+                    AudioDeckStateHolder.setConnected(false)
+                }
             },
 
             onError = { error ->
@@ -86,12 +94,6 @@ class MainActivity : ComponentActivity() {
         audioDeckWebSocket.connect(
             "10.138.245.32"
         )
-
-        setContent {
-            AudioDeckTheme {
-                ConnectionScreen()
-            }
-        }
     }
 
     override fun onDestroy() {
@@ -100,15 +102,65 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
+object AudioDeckStateHolder {
+
+    var state by mutableStateOf(
+        AudioDeckState()
+    )
+        private set
+
+    fun update(newState: AudioDeckState) {
+        state = newState.copy(
+            connected = true
+        )
+    }
+
+    fun setConnected(connected: Boolean) {
+        state = state.copy(
+            connected = connected
+        )
+    }
+}
+
+
 @Composable
-fun ConnectionScreen() {
+fun AudioDeckScreen() {
+
+    val state = AudioDeckStateHolder.state
 
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "AUDIO DECK")
-        Text(text = "Connecting to PC...")
+
+        Text(
+            text = "AUDIO DECK"
+        )
+
+        Text(
+            text = if (state.connected) {
+                "CONNECTED"
+            } else {
+                "DISCONNECTED"
+            }
+        )
+
+        Text(
+            text = state.title
+        )
+
+        Text(
+            text = state.artist
+        )
+
+        Text(
+            text = if (state.artwork != null) {
+                "ARTWORK RECEIVED"
+            } else {
+                "NO ARTWORK"
+            }
+        )
     }
 }
