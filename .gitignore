@@ -18,6 +18,3 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
-
-# files
-pc/server/test_artwork.jpg

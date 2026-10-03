@@ -12,6 +12,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.chaithanya.audiodeck.ui.theme.AudioDeckTheme
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
 
@@ -122,12 +128,49 @@ object AudioDeckStateHolder {
         )
     }
 }
+fun decodeArtwork(
+    base64: String?
+): androidx.compose.ui.graphics.ImageBitmap? {
 
+    if (base64.isNullOrEmpty()) {
+        return null
+    }
+
+    return try {
+
+        val bytes = Base64.decode(
+            base64,
+            Base64.DEFAULT
+        )
+
+        BitmapFactory
+            .decodeByteArray(
+                bytes,
+                0,
+                bytes.size
+            )
+            ?.asImageBitmap()
+
+    } catch (e: Exception) {
+
+        Log.e(
+            "AudioDeck",
+            "Artwork decode failed",
+            e
+        )
+
+        null
+    }
+}
 
 @Composable
 fun AudioDeckScreen() {
 
     val state = AudioDeckStateHolder.state
+
+    val artwork = decodeArtwork(
+        state.artwork
+    )
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -155,12 +198,19 @@ fun AudioDeckScreen() {
             text = state.artist
         )
 
-        Text(
-            text = if (state.artwork != null) {
-                "ARTWORK RECEIVED"
-            } else {
-                "NO ARTWORK"
-            }
-        )
+        if (artwork != null) {
+
+            Image(
+                bitmap = artwork,
+                contentDescription = "Album artwork",
+                modifier = Modifier.size(250.dp)
+            )
+
+        } else {
+
+            Text(
+                text = "NO ARTWORK"
+            )
+        }
     }
 }
