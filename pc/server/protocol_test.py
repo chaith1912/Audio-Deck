@@ -9,14 +9,14 @@ from protocol import (
 
 state = {
     "player": "Brave",
-    "title": "Kaamaatchi",
-    "artist": "Sunder Chandran",
-    "album": "Kaamaatchi",
+    "title": "Test Song",
+    "artist": "Test Artist",
+    "album": "Test Album",
     "status": "PLAYING",
-    "position": 37.2,
-    "duration": 172.0,
+    "position": 10.5,
+    "duration": 200.0,
+    "artwork": None,
 }
-
 
 print("TRACK")
 print(track_message(state))

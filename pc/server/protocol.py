@@ -12,8 +12,8 @@ def track_message(state):
         "artist": state["artist"],
         "album": state["album"],
         "duration": state["duration"],
+        "artwork": state["artwork"],
     }
-
 
 def playback_message(state):
     return {
@@ -40,8 +40,8 @@ def state_message(state):
         "status": state["status"],
         "position": state["position"],
         "duration": state["duration"],
+        "artwork": state["artwork"],
     }
-
 
 def welcome_message():
     return {
