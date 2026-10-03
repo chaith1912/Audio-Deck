@@ -1,9 +1,13 @@
+import asyncio
+import base64
 import time
 
 from winsdk.windows.media.control import (
     GlobalSystemMediaTransportControlsSessionManager,
     GlobalSystemMediaTransportControlsSessionPlaybackStatus,
 )
+from winsdk.windows.storage.streams import DataReader
+
 
 STATUS_NAMES = {
     GlobalSystemMediaTransportControlsSessionPlaybackStatus.PLAYING: "PLAYING",
@@ -22,6 +26,10 @@ class MediaSessionReader:
         self.base_time = None
         self.last_status = None
         self.last_track = None
+
+        # Artwork cache
+        self.artwork_cache = None
+        self.artwork_track = None
 
     async def initialize(self):
         self.manager = await (
@@ -46,6 +54,42 @@ class MediaSessionReader:
 
         return None
 
+    async def get_artwork(self, thumbnail):
+        """
+        Extract artwork from Windows GSMTC thumbnail
+        and return it as a Base64 string.
+        """
+
+        if thumbnail is None:
+            return None
+
+        try:
+            stream = await thumbnail.open_read_async()
+
+            size = int(stream.size)
+
+            if size <= 0:
+                stream.close()
+                return None
+
+            reader = DataReader(stream)
+
+            loaded = await reader.load_async(size)
+
+            data = bytearray(loaded)
+
+            for i in range(loaded):
+                data[i] = reader.read_byte()
+
+            reader.close()
+            stream.close()
+
+            return base64.b64encode(data).decode("ascii")
+
+        except Exception as e:
+            print(f"[Artwork] Error: {e}")
+            return None
+
     async def get_current_state(self):
         session = await self.get_brave_session()
 
@@ -53,10 +97,6 @@ class MediaSessionReader:
             return None
 
         properties = await session.try_get_media_properties_async()
-
-        #temporary test to see if we can get the thumbnail
-        thumbnail = properties.thumbnail
-        print("Thumbnail:", thumbnail)
 
         playback_info = session.get_playback_info()
         timeline = session.get_timeline_properties()
@@ -100,6 +140,21 @@ class MediaSessionReader:
 
             self.base_time = now
 
+            # ----------------------------------------------
+            # Load artwork only when the track changes
+            # ----------------------------------------------
+
+            self.artwork_cache = await self.get_artwork(
+                properties.thumbnail
+            )
+
+            self.artwork_track = track
+
+            if self.artwork_cache is not None:
+                print("[Artwork] New artwork loaded.")
+            else:
+                print("[Artwork] No artwork available.")
+
         # --------------------------------------------------
         # Playback state changed
         # --------------------------------------------------
@@ -107,12 +162,15 @@ class MediaSessionReader:
         elif status != self.last_status:
 
             if status == "PLAYING":
+
                 # Resume from the last known position.
                 self.base_time = now
 
             elif status != "PLAYING":
+
                 # Freeze the position when paused/stopped.
                 if self.base_time is not None:
+
                     self.base_position += (
                         now - self.base_time
                     )
@@ -142,7 +200,10 @@ class MediaSessionReader:
 
             position = self.base_position
 
-        # Clamp position.
+        # --------------------------------------------------
+        # Clamp position
+        # --------------------------------------------------
+
         position = max(
             0.0,
             min(position, duration),
@@ -158,6 +219,7 @@ class MediaSessionReader:
             "status": status,
             "position": position,
             "duration": duration,
+            "artwork": self.artwork_cache,
         }
 
 
@@ -170,22 +232,28 @@ async def test():
         state = await reader.get_current_state()
 
         if state is None:
+
             print("No Brave media session found.")
 
         else:
+
+            artwork_status = (
+                "YES"
+                if state["artwork"] is not None
+                else "NO"
+            )
+
             print(
                 f"{state['status']:8} "
                 f"{state['position']:7.2f} / "
-                f"{state['duration']:.2f}"
+                f"{state['duration']:.2f} "
+                f"| Artwork: {artwork_status}"
             )
 
-        import asyncio
         await asyncio.sleep(1)
 
 
 if __name__ == "__main__":
-
-    import asyncio
 
     try:
         asyncio.run(test())
