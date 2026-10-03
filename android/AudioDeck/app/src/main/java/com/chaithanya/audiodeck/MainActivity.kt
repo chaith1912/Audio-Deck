@@ -1,47 +1,76 @@
 package com.chaithanya.audiodeck
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import com.chaithanya.audiodeck.ui.theme.AudioDeckTheme
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var audioDeckWebSocket: AudioDeckWebSocket
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        audioDeckWebSocket = AudioDeckWebSocket(
+            onMessage = { message ->
+                Log.d("AudioDeck", "Received: $message")
+            },
+
+            onConnected = {
+                Log.d("AudioDeck", "CONNECTED TO PC")
+            },
+
+            onDisconnected = {
+                Log.d("AudioDeck", "DISCONNECTED FROM PC")
+            },
+
+            onError = { error ->
+                Log.e("AudioDeck", "WebSocket error: $error")
+            }
+        )
+
+        // PC Wi-Fi address
+        audioDeckWebSocket.connect(
+            "10.138.245.32"
+        )
+
         setContent {
             AudioDeckTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                ConnectionScreen()
             }
         }
-    }   
+    }
+
+    override fun onDestroy() {
+        audioDeckWebSocket.disconnect()
+        super.onDestroy()
+    }
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+fun ConnectionScreen() {
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    AudioDeckTheme {
-        Greeting("Android")
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+
+        Text(
+            text = "AUDIO DECK"
+        )
+
+        Text(
+            text = "Connecting to PC..."
+        )
     }
 }
