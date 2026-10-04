@@ -168,9 +168,9 @@ fun AudioDeckScreen() {
 
     val state = AudioDeckStateHolder.state
 
-    val artwork = decodeArtwork(
-        state.artwork
-    )
+    val artwork = remember(state.artwork) {
+        decodeArtwork(state.artwork)
+    }
 
     Column(
         modifier = Modifier.fillMaxSize(),
