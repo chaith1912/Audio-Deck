@@ -53,3 +53,19 @@ def welcome_message():
 
 def parse_message(message):
     return json.loads(message)
+
+def command_message(action):
+    return {
+        "type": "command",
+        "action": action,
+    }
+
+def parse_command(message):
+    data = json.loads(message)
+
+    if data.get("type") != "command":
+        return None
+
+    return {
+        "action": data.get("action"),
+    }

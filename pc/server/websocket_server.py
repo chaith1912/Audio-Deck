@@ -5,11 +5,12 @@ import websockets
 
 from media_session import MediaSessionReader
 from protocol import (
+    welcome_message,
     state_message,
     track_message,
     playback_message,
     position_message,
-    welcome_message,
+    parse_command,
 )
 
 HOST = "0.0.0.0"
@@ -83,13 +84,74 @@ class AudioDeckWebSocketServer:
             self.clients.discard(client)
 
     async def handle_client(self, websocket):
+        """
+        Handle an Android WebSocket client.
+
+        The client can send commands such as:
+
+        {
+            "type": "command",
+            "command": "play_pause"
+        }
+        """
+
         await self.register_client(websocket)
 
         try:
             async for message in websocket:
+
                 print(
                     f"[WebSocket] Received: {message}"
                 )
+
+                try:
+                    command = parse_command(message)
+
+                except Exception as e:
+                    print(
+                        f"[WebSocket] Invalid command: {e}"
+                    )
+                    continue
+
+                if command is None:
+                    continue
+
+                command_type = command.get("command")
+
+                print(
+                    f"[WebSocket] Command: "
+                    f"{command_type}"
+                )
+
+                # -----------------------------------
+                # Play / Pause
+                # -----------------------------------
+
+                if command_type == "play_pause":
+
+                    result = (
+                        await self.media_reader
+                        .toggle_play_pause()
+                    )
+
+                    if result:
+                        print(
+                            "[Control] "
+                            "Play/Pause successful."
+                        )
+
+                    else:
+                        print(
+                            "[Control] "
+                            "Play/Pause failed."
+                        )
+
+                else:
+
+                    print(
+                        f"[Control] Unknown command: "
+                        f"{command_type}"
+                    )
 
         except websockets.exceptions.ConnectionClosed:
             pass
@@ -111,7 +173,10 @@ class AudioDeckWebSocketServer:
 
         status = state["status"]
 
+        # ---------------------------------------
         # First state received.
+        # ---------------------------------------
+
         if self.current_state is None:
 
             self.current_state = state
@@ -124,7 +189,10 @@ class AudioDeckWebSocketServer:
 
             return
 
+        # ---------------------------------------
         # Track changed.
+        # ---------------------------------------
+
         if track != self.current_track:
 
             self.current_track = track
@@ -133,7 +201,10 @@ class AudioDeckWebSocketServer:
                 track_message(state)
             )
 
+        # ---------------------------------------
         # Playback state changed.
+        # ---------------------------------------
+
         if status != self.current_status:
 
             self.current_status = status
@@ -171,7 +242,10 @@ class AudioDeckWebSocketServer:
 
                 if self.current_state is not None:
 
-                    state = await self.media_reader.get_current_state()
+                    state = (
+                        await self.media_reader
+                        .get_current_state()
+                    )
 
                     if state is not None:
 
@@ -196,7 +270,9 @@ class AudioDeckWebSocketServer:
         print("=" * 60)
         print()
 
-        print(f"WebSocket: ws://0.0.0.0:{PORT}")
+        print(
+            f"WebSocket: ws://0.0.0.0:{PORT}"
+        )
         print("Monitoring Brave...")
         print("Position synchronization enabled.")
         print("Waiting for clients...")
