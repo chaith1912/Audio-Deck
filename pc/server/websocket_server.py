@@ -87,18 +87,21 @@ class AudioDeckWebSocketServer:
         """
         Handle an Android WebSocket client.
 
-        The client can send commands such as:
+        Supported commands:
 
         {
             "type": "command",
             "action": "play_pause"
         }
 
-        or:
-
         {
             "type": "command",
             "action": "next"
+        }
+
+        {
+            "type": "command",
+            "action": "previous"
         }
         """
 
@@ -177,7 +180,30 @@ class AudioDeckWebSocketServer:
                         )
 
                 # -----------------------------------
-                # Unknown command
+                # Previous Track
+                # -----------------------------------
+
+                elif command_type == "previous":
+
+                    result = (
+                        await self.media_reader
+                        .previous_track()
+                    )
+
+                    if result:
+                        print(
+                            "[Control] "
+                            "Previous track successful."
+                        )
+
+                    else:
+                        print(
+                            "[Control] "
+                            "Previous track failed."
+                        )
+
+                # -----------------------------------
+                # Unknown Command
                 # -----------------------------------
 
                 else:
@@ -257,17 +283,22 @@ class AudioDeckWebSocketServer:
                 await self.update_media_state()
 
             except Exception as e:
-                print(f"[Media] Error: {e}")
+                print(
+                    f"[Media] Error: {e}"
+                )
 
-            await asyncio.sleep(POSITION_INTERVAL)
+            await asyncio.sleep(
+                POSITION_INTERVAL
+            )
 
     async def position_monitor(self):
         """
         Sends periodic position synchronization.
 
-        This is intentionally separate from track/playback
-        events so the Android client can smoothly interpolate
-        between synchronization points.
+        This is intentionally separate from
+        track/playback events so the Android client
+        can smoothly interpolate between
+        synchronization points.
         """
 
         while True:
@@ -290,9 +321,14 @@ class AudioDeckWebSocketServer:
                         )
 
             except Exception as e:
-                print(f"[Position] Error: {e}")
 
-            await asyncio.sleep(POSITION_INTERVAL)
+                print(
+                    f"[Position] Error: {e}"
+                )
+
+            await asyncio.sleep(
+                POSITION_INTERVAL
+            )
 
     async def start(self):
 
@@ -307,12 +343,41 @@ class AudioDeckWebSocketServer:
         print(
             f"WebSocket: ws://0.0.0.0:{PORT}"
         )
-        print("Monitoring Brave...")
-        print("Position synchronization enabled.")
-        print("Waiting for clients...")
+
+        print(
+            "Monitoring Brave..."
+        )
+
+        print(
+            "Position synchronization enabled."
+        )
+
+        print(
+            "Remote controls enabled:"
+        )
+
+        print(
+            "  - Play/Pause"
+        )
+
+        print(
+            "  - Next Track"
+        )
+
+        print(
+            "  - Previous Track"
+        )
+
+        print(
+            "Waiting for clients..."
+        )
+
         print()
 
-        print("Press Ctrl+C to stop.")
+        print(
+            "Press Ctrl+C to stop."
+        )
+
         print()
 
         async with websockets.serve(
@@ -343,4 +408,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
 
         print()
-        print("Audio Deck server stopped.")
+        print(
+            "Audio Deck server stopped."
+        )

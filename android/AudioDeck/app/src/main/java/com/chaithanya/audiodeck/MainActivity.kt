@@ -146,6 +146,10 @@ object AudioDeckCommandHolder {
     fun sendNext() {
         sendCommand?.invoke("next")
     }
+
+    fun sendPrevious() {
+        sendCommand?.invoke("previous")
+    }
 }
 fun decodeArtwork(
     base64: String?
@@ -222,7 +226,7 @@ fun AudioDeckScreen() {
             Image(
                 bitmap = artwork,
                 contentDescription = "Album artwork",
-                modifier = Modifier.size(180.dp)
+                modifier = Modifier.size(120.dp)
             )
 
         } else {
@@ -244,6 +248,13 @@ fun AudioDeckScreen() {
             }
         ) {
             Text("NEXT")
+        }
+        Button(
+            onClick = {
+                AudioDeckCommandHolder.sendPrevious()
+            }
+        ) {
+            Text("PREVIOUS")
         }
     }
 }

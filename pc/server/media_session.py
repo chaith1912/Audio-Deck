@@ -316,8 +316,8 @@ async def test_control():
     print("Audio Deck control test")
     input("Press ENTER for next track...")
 
-    result = await reader.next_track()
-
+    result = await reader.previous_track()
+    
     print("Control successful." if result else "Control failed.")
 
 
