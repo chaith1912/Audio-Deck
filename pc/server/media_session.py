@@ -221,7 +221,21 @@ class MediaSessionReader:
             "duration": duration,
             "artwork": self.artwork_cache,
         }
+    async def toggle_play_pause(self):
+        session = await self.get_brave_session()
 
+        if session is None:
+            print("[Control] No Brave media session found.")
+            return False
+        
+        try:
+            await session.try_toggle_play_pause_async()
+            print("[Control] Play/Pause toggled.")
+            return True
+        
+        except Exception as e:
+            print(f"[Control] Play/Pause failed: {e}")
+            return False
 
 async def test():
 
@@ -257,6 +271,37 @@ if __name__ == "__main__":
 
     try:
         asyncio.run(test())
+
+    except KeyboardInterrupt:
+        print("\nStopped.")
+
+#test
+async def test_control():
+
+    reader = MediaSessionReader()
+
+    await reader.initialize()
+
+    print("Audio Deck control test")
+    print("Make sure Brave is currently playing.")
+    print()
+
+    input("Press ENTER to toggle Play/Pause...")
+
+    result = await reader.toggle_play_pause()
+
+    print()
+
+    if result:
+        print("Control successful.")
+    else:
+        print("Control failed.")
+
+
+if __name__ == "__main__":
+
+    try:
+        asyncio.run(test_control())
 
     except KeyboardInterrupt:
         print("\nStopped.")
