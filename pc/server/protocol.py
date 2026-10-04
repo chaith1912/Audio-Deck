@@ -68,4 +68,5 @@ def parse_command(message):
 
     return {
         "action": data.get("action"),
+        "position": data.get("position"),
     }

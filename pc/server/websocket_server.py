@@ -206,11 +206,12 @@ class AudioDeckWebSocketServer:
                 elif command_type == "seek":
 
                     position = command.get("position")
+
                     if position is None:
                          print("[Command] Seek position missing.")
                          return
 
-                    success = await self.reader.seek(float(position))
+                    success = await self.media_reader.seek(float(position))
 
                     if success:
                         print(f"[Command] Seek executed: {position}s")

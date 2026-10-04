@@ -230,7 +230,7 @@ fun AudioDeckScreen() {
             Image(
                 bitmap = artwork,
                 contentDescription = "Album artwork",
-                modifier = Modifier.size(120.dp)
+                modifier = Modifier.size(50.dp)
             )
 
         } else {
@@ -259,6 +259,13 @@ fun AudioDeckScreen() {
             }
         ) {
             Text("PREVIOUS")
+        }
+        Button(
+            onClick = {
+                AudioDeckCommandHolder.sendSeek(60.0)
+            }
+        ) {
+            Text("SEEK 60s")
         }
     }
 }
