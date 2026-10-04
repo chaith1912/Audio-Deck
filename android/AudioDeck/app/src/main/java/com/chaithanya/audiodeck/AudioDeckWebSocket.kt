@@ -77,4 +77,16 @@ class AudioDeckWebSocket(
         webSocket?.close(1000, "Client closing")
         webSocket = null
     }
+
+    fun sendCommand(action: String) {
+
+        val message = """
+        {
+            "type": "command",
+            "action": "$action"
+        }
+    """.trimIndent()
+
+        webSocket?.send(message)
+    }
 }

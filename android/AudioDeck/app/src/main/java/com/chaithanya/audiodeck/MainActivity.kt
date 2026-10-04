@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
+import androidx.compose.material3.Button
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -96,14 +97,20 @@ class MainActivity : ComponentActivity() {
                 )
             }
         )
-
+        AudioDeckCommandHolder.sendCommand = { action ->
+            audioDeckWebSocket.sendCommand(action)
+        }
         audioDeckWebSocket.connect(
             "10.138.245.32"
         )
     }
 
     override fun onDestroy() {
+
+        AudioDeckCommandHolder.sendCommand = null
+
         audioDeckWebSocket.disconnect()
+
         super.onDestroy()
     }
 }
@@ -126,6 +133,14 @@ object AudioDeckStateHolder {
         state = state.copy(
             connected = connected
         )
+    }
+}
+object AudioDeckCommandHolder {
+
+    var sendCommand: ((String) -> Unit)? = null
+
+    fun sendPlayPause() {
+        sendCommand?.invoke("play_pause")
     }
 }
 fun decodeArtwork(
@@ -211,6 +226,14 @@ fun AudioDeckScreen() {
             Text(
                 text = "NO ARTWORK"
             )
+        }
+
+        Button(
+            onClick = {
+                AudioDeckCommandHolder.sendPlayPause()
+            }
+        ) {
+            Text("PLAY / PAUSE")
         }
     }
 }
