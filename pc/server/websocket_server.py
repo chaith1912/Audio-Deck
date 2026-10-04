@@ -116,7 +116,7 @@ class AudioDeckWebSocketServer:
                 if command is None:
                     continue
 
-                command_type = command.get("command")
+                command_type = command.get("action")
 
                 print(
                     f"[WebSocket] Command: "
