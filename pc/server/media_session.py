@@ -237,6 +237,38 @@ class MediaSessionReader:
             print(f"[Control] Play/Pause failed: {e}")
             return False
 
+    async def next_track(self):
+        session = await self.get_brave_session()
+
+        if session is None:
+            print("[Control] No Brave media session found.")
+            return False
+        
+        try:
+            await session.try_skip_next_async()
+            print("[Control] Skipped to next track.")
+            return True
+        
+        except Exception as e:
+            print(f"[Control] Next track failed: {e}")
+            return False
+
+    async def previous_track(self):
+        session = await self.get_brave_session()
+
+        if session is None:
+            print("[Control] No Brave media session found.")
+            return False
+        
+        try:
+            await session.try_skip_previous_async()
+            print("[Control] Skipped to previous track.")
+            return True
+        
+        except Exception as e:
+            print(f"[Control] Previous track failed: {e}")
+            return False
+
 async def test():
 
     reader = MediaSessionReader()
@@ -277,31 +309,17 @@ if __name__ == "__main__":
 
 #test
 async def test_control():
-
     reader = MediaSessionReader()
 
     await reader.initialize()
 
     print("Audio Deck control test")
-    print("Make sure Brave is currently playing.")
-    print()
+    input("Press ENTER for next track...")
 
-    input("Press ENTER to toggle Play/Pause...")
+    result = await reader.next_track()
 
-    result = await reader.toggle_play_pause()
-
-    print()
-
-    if result:
-        print("Control successful.")
-    else:
-        print("Control failed.")
+    print("Control successful." if result else "Control failed.")
 
 
 if __name__ == "__main__":
-
-    try:
-        asyncio.run(test_control())
-
-    except KeyboardInterrupt:
-        print("\nStopped.")
+    asyncio.run(test_control())

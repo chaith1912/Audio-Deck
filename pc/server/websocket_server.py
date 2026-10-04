@@ -91,7 +91,14 @@ class AudioDeckWebSocketServer:
 
         {
             "type": "command",
-            "command": "play_pause"
+            "action": "play_pause"
+        }
+
+        or:
+
+        {
+            "type": "command",
+            "action": "next"
         }
         """
 
@@ -145,6 +152,33 @@ class AudioDeckWebSocketServer:
                             "[Control] "
                             "Play/Pause failed."
                         )
+
+                # -----------------------------------
+                # Next Track
+                # -----------------------------------
+
+                elif command_type == "next":
+
+                    result = (
+                        await self.media_reader
+                        .next_track()
+                    )
+
+                    if result:
+                        print(
+                            "[Control] "
+                            "Next track successful."
+                        )
+
+                    else:
+                        print(
+                            "[Control] "
+                            "Next track failed."
+                        )
+
+                # -----------------------------------
+                # Unknown command
+                # -----------------------------------
 
                 else:
 

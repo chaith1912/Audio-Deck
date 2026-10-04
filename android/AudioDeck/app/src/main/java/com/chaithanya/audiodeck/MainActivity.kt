@@ -142,6 +142,10 @@ object AudioDeckCommandHolder {
     fun sendPlayPause() {
         sendCommand?.invoke("play_pause")
     }
+
+    fun sendNext() {
+        sendCommand?.invoke("next")
+    }
 }
 fun decodeArtwork(
     base64: String?
@@ -218,7 +222,7 @@ fun AudioDeckScreen() {
             Image(
                 bitmap = artwork,
                 contentDescription = "Album artwork",
-                modifier = Modifier.size(250.dp)
+                modifier = Modifier.size(180.dp)
             )
 
         } else {
@@ -227,13 +231,19 @@ fun AudioDeckScreen() {
                 text = "NO ARTWORK"
             )
         }
-
         Button(
             onClick = {
                 AudioDeckCommandHolder.sendPlayPause()
             }
         ) {
             Text("PLAY / PAUSE")
+        }
+        Button(
+            onClick = {
+                AudioDeckCommandHolder.sendNext()
+            }
+        ) {
+            Text("NEXT")
         }
     }
 }
