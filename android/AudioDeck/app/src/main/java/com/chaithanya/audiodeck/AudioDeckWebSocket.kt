@@ -78,14 +78,24 @@ class AudioDeckWebSocket(
         webSocket = null
     }
 
-    fun sendCommand(action: String) {
+    fun sendCommand(action: String, position: Double? = null) {
 
-        val message = """
+        val message = if (position != null) {
+            """
+        {
+            "type": "command",
+            "action": "$action",
+            "position": $position
+        }
+        """.trimIndent()
+        } else {
+            """
         {
             "type": "command",
             "action": "$action"
         }
-    """.trimIndent()
+        """.trimIndent()
+        }
 
         webSocket?.send(message)
     }

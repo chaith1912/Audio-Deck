@@ -269,6 +269,24 @@ class MediaSessionReader:
             print(f"[Control] Previous track failed: {e}")
             return False
 
+    async def seek(self, position):
+        session = await self.get_brave_session()
+
+        if session is None:
+            print("[Control] No Brave media session found.")
+            return False
+        
+        try:
+            position_ticks = int(position * 10_000_000)
+            await session.try_change_playback_position_async(position_ticks)
+
+            print(f"[Control] Seeked to {position:.2f}s.")
+            return True
+        
+        except Exception as e:
+            print(f"[Control] Seek failed: {e}")
+            return False
+
 async def test():
 
     reader = MediaSessionReader()
@@ -298,28 +316,29 @@ async def test():
 
         await asyncio.sleep(1)
 
-
-if __name__ == "__main__":
-
-    try:
-        asyncio.run(test())
-
-    except KeyboardInterrupt:
-        print("\nStopped.")
-
 #test
 async def test_control():
+
     reader = MediaSessionReader()
 
     await reader.initialize()
 
-    print("Audio Deck control test")
-    input("Press ENTER for next track...")
+    print("Audio Deck seek test")
+    print("Seeking to 60 seconds...")
+    print()
 
-    result = await reader.previous_track()
-    
-    print("Control successful." if result else "Control failed.")
+    result = await reader.seek(120)
+
+    print()
+
+    if result:
+        print("Seek successful.")
+    else:
+        print("Seek failed.")
 
 
 if __name__ == "__main__":
-    asyncio.run(test_control())
+    try:
+        asyncio.run(test_control())
+    except KeyboardInterrupt:
+        print("\nStopped.")

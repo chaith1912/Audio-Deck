@@ -97,8 +97,8 @@ class MainActivity : ComponentActivity() {
                 )
             }
         )
-        AudioDeckCommandHolder.sendCommand = { action ->
-            audioDeckWebSocket.sendCommand(action)
+        AudioDeckCommandHolder.sendCommand = { action, position ->
+            audioDeckWebSocket.sendCommand(action, position)
         }
         audioDeckWebSocket.connect(
             "10.138.245.32"
@@ -137,18 +137,22 @@ object AudioDeckStateHolder {
 }
 object AudioDeckCommandHolder {
 
-    var sendCommand: ((String) -> Unit)? = null
+    var sendCommand: ((String, Double?) -> Unit)? = null
 
     fun sendPlayPause() {
-        sendCommand?.invoke("play_pause")
+        sendCommand?.invoke("play_pause", null)
     }
 
     fun sendNext() {
-        sendCommand?.invoke("next")
+        sendCommand?.invoke("next", null)
     }
 
     fun sendPrevious() {
-        sendCommand?.invoke("previous")
+        sendCommand?.invoke("previous", null)
+    }
+
+    fun sendSeek(position: Double) {
+        sendCommand?.invoke("seek", position)
     }
 }
 fun decodeArtwork(
