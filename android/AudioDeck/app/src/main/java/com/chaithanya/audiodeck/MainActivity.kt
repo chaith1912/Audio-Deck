@@ -131,6 +131,19 @@ object AudioDeckStateHolder {
         )
     }
 
+    fun updatePosition(position: Double, duration: Double) {
+        state = state.copy(
+            position = position,
+            duration = duration
+        )
+    }
+
+    fun updatePlayback(status: String) {
+        state = state.copy(
+            status = status
+        )
+    }
+
     fun setConnected(connected: Boolean) {
         state = state.copy(
             connected = connected
@@ -196,8 +209,15 @@ fun decodeArtwork(
 fun AudioDeckScreen() {
 
     var seekPosition by remember { mutableFloatStateOf(0f) }
+    var isSeeking by remember { mutableStateOf(false) }
 
     val state = AudioDeckStateHolder.state
+
+    LaunchedEffect(state.position) {
+        if (!isSeeking) {
+            seekPosition = state.position.toFloat()
+        }
+    }
 
     val artwork = remember(state.artwork) {
         decodeArtwork(state.artwork)
@@ -244,17 +264,21 @@ fun AudioDeckScreen() {
             )
         }
 
+        val maxDuration = maxOf(state.duration.toFloat(), 0.001f)
+
         Slider(
-            value = seekPosition,
+            value = seekPosition.coerceIn(0f, maxDuration),
             onValueChange = { value ->
+                isSeeking = true
                 seekPosition = value
             },
             onValueChangeFinished = {
                 AudioDeckCommandHolder.sendSeek(
                     seekPosition.toDouble()
                 )
+                isSeeking = false
             },
-            valueRange = 0f..state.duration.toFloat(),
+            valueRange = 0f..maxDuration,
             modifier = Modifier.fillMaxWidth(0.8f)
         )
 

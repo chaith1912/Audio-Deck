@@ -24,20 +24,38 @@ object AudioDeckMessageParser {
                         status = json.optString("status"),
                         position = json.optDouble("position", 0.0),
                         duration = json.optDouble("duration", 0.0),
-                        artwork = json.optString("artwork", null)
+                        artwork = if (json.has("artwork") && !json.isNull("artwork")) json.getString("artwork") else null
                     )
                 }
 
                 "track" -> {
 
-                    AudioDeckState(
+                    val currentState = AudioDeckStateHolder.state
+                    currentState.copy(
                         connected = true,
-                        player = json.optString("player"),
-                        title = json.optString("title"),
-                        artist = json.optString("artist"),
-                        album = json.optString("album"),
-                        duration = json.optDouble("duration", 0.0),
-                        artwork = json.optString("artwork", null)
+                        player = json.optString("player", currentState.player),
+                        title = json.optString("title", currentState.title),
+                        artist = json.optString("artist", currentState.artist),
+                        album = json.optString("album", currentState.album),
+                        duration = json.optDouble("duration", currentState.duration),
+                        artwork = if (json.has("artwork") && !json.isNull("artwork")) json.getString("artwork") else null
+                    )
+                }
+
+                "playback" -> {
+
+                    val currentState = AudioDeckStateHolder.state
+                    currentState.copy(
+                        status = json.optString("status", currentState.status)
+                    )
+                }
+
+                "position" -> {
+
+                    val currentState = AudioDeckStateHolder.state
+                    currentState.copy(
+                        position = json.optDouble("position", currentState.position),
+                        duration = json.optDouble("duration", currentState.duration)
                     )
                 }
 
