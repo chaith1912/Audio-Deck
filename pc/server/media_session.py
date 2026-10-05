@@ -26,6 +26,7 @@ class MediaSessionReader:
         self.base_time = None
         self.last_status = None
         self.last_track = None
+        self.last_timeline_updated = None
 
         # Artwork cache
         self.artwork_cache = None
@@ -116,6 +117,7 @@ class MediaSessionReader:
 
         # Raw position reported by Windows.
         raw_position = timeline.position.total_seconds()
+        timeline_updated = timeline.last_updated_time
 
         track = (
             title,
@@ -135,10 +137,11 @@ class MediaSessionReader:
 
             self.base_position = max(
                 0.0,
-                raw_position,
+                min(raw_position, duration),
             )
 
             self.base_time = now
+            self.last_timeline_updated = timeline_updated
 
             # ----------------------------------------------
             # Load artwork only when the track changes
@@ -175,12 +178,33 @@ class MediaSessionReader:
                         now - self.base_time
                     )
 
-                    self.base_position = min(
-                        self.base_position,
-                        duration,
+                    self.base_position = max(
+                        0.0,
+                        min(
+                            self.base_position,
+                            duration,
+                        ),
                     )
 
                 self.base_time = now
+
+            self.last_timeline_updated = timeline_updated
+
+        # --------------------------------------------------
+        # External timeline update (e.g., seek in player)
+        # --------------------------------------------------
+
+        elif (
+            self.last_timeline_updated is not None
+            and timeline_updated != self.last_timeline_updated
+        ):
+
+            self.base_position = max(
+                0.0,
+                min(raw_position, duration),
+            )
+            self.base_time = now
+            self.last_timeline_updated = timeline_updated
 
         # --------------------------------------------------
         # Calculate current position
@@ -279,6 +303,10 @@ class MediaSessionReader:
         try:
             position_ticks = int(position * 10_000_000)
             await session.try_change_playback_position_async(position_ticks)
+
+            now = time.monotonic()
+            self.base_position = float(position)
+            self.base_time = now
 
             print(f"[Control] Seeked to {position:.2f}s.")
             return True

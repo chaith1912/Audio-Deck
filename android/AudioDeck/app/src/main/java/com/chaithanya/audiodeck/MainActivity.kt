@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Slider
 import androidx.compose.foundation.layout.fillMaxWidth
+import kotlinx.coroutines.delay
+import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
 
@@ -210,12 +212,32 @@ fun AudioDeckScreen() {
 
     var seekPosition by remember { mutableFloatStateOf(0f) }
     var isSeeking by remember { mutableStateOf(false) }
+    var pendingSeekTarget by remember { mutableStateOf<Double?>(null) }
 
     val state = AudioDeckStateHolder.state
 
+    LaunchedEffect(state.title) {
+        pendingSeekTarget = null
+    }
+
+    LaunchedEffect(pendingSeekTarget) {
+        if (pendingSeekTarget != null) {
+            delay(1500)
+            pendingSeekTarget = null
+        }
+    }
+
     LaunchedEffect(state.position) {
         if (!isSeeking) {
-            seekPosition = state.position.toFloat()
+            val target = pendingSeekTarget
+            if (target != null) {
+                if (abs(state.position - target) < 3.0) {
+                    seekPosition = state.position.toFloat()
+                    pendingSeekTarget = null
+                }
+            } else {
+                seekPosition = state.position.toFloat()
+            }
         }
     }
 
@@ -273,9 +295,9 @@ fun AudioDeckScreen() {
                 seekPosition = value
             },
             onValueChangeFinished = {
-                AudioDeckCommandHolder.sendSeek(
-                    seekPosition.toDouble()
-                )
+                val target = seekPosition.toDouble()
+                pendingSeekTarget = target
+                AudioDeckCommandHolder.sendSeek(target)
                 isSeeking = false
             },
             valueRange = 0f..maxDuration,
