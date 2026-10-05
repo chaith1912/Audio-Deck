@@ -19,6 +19,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Slider
+import androidx.compose.foundation.layout.fillMaxWidth
 
 class MainActivity : ComponentActivity() {
 
@@ -193,6 +195,8 @@ fun decodeArtwork(
 @Composable
 fun AudioDeckScreen() {
 
+    var seekPosition by remember { mutableFloatStateOf(0f) }
+
     val state = AudioDeckStateHolder.state
 
     val artwork = remember(state.artwork) {
@@ -239,6 +243,21 @@ fun AudioDeckScreen() {
                 text = "NO ARTWORK"
             )
         }
+
+        Slider(
+            value = seekPosition,
+            onValueChange = { value ->
+                seekPosition = value
+            },
+            onValueChangeFinished = {
+                AudioDeckCommandHolder.sendSeek(
+                    seekPosition.toDouble()
+                )
+            },
+            valueRange = 0f..state.duration.toFloat(),
+            modifier = Modifier.fillMaxWidth(0.8f)
+        )
+
         Button(
             onClick = {
                 AudioDeckCommandHolder.sendPlayPause()
@@ -259,13 +278,6 @@ fun AudioDeckScreen() {
             }
         ) {
             Text("PREVIOUS")
-        }
-        Button(
-            onClick = {
-                AudioDeckCommandHolder.sendSeek(60.0)
-            }
-        ) {
-            Text("SEEK 60s")
         }
     }
 }
