@@ -44,27 +44,17 @@ class MainActivity : ComponentActivity() {
                     "Raw message: $message"
                 )
 
-                val state =
-                    AudioDeckMessageParser.parse(message)
+                runOnUiThread {
+                    val state =
+                        AudioDeckMessageParser.parse(message, AudioDeckStateHolder.state)
 
-                if (state != null) {
+                    if (state != null) {
 
-                    Log.d(
-                        "AudioDeck",
-                        "Title: ${state.title}"
-                    )
+                        Log.d(
+                            "AudioDeck",
+                            "Title: ${state.title}, Status: ${state.status}, Position: ${state.position}/${state.duration}"
+                        )
 
-                    Log.d(
-                        "AudioDeck",
-                        "Artist: ${state.artist}"
-                    )
-
-                    Log.d(
-                        "AudioDeck",
-                        "Artwork received: ${state.artwork != null}"
-                    )
-
-                    runOnUiThread {
                         AudioDeckStateHolder.update(state)
                     }
                 }
@@ -103,7 +93,7 @@ class MainActivity : ComponentActivity() {
             audioDeckWebSocket.sendCommand(action, position)
         }
         audioDeckWebSocket.connect(
-            "10.138.245.32"
+            "192.168.54.32"
         )
     }
 
@@ -128,6 +118,17 @@ object AudioDeckStateHolder {
     fun update(newState: AudioDeckState) {
         state = newState.copy(
             connected = true
+        )
+    }
+
+    fun updatePosition(position: Double) {
+        val clampedPosition = if (state.duration > 0.0) {
+            position.coerceIn(0.0, state.duration)
+        } else {
+            position.coerceAtLeast(0.0)
+        }
+        state = state.copy(
+            position = clampedPosition
         )
     }
 
@@ -195,9 +196,23 @@ fun decodeArtwork(
 @Composable
 fun AudioDeckScreen() {
 
-    var seekPosition by remember { mutableFloatStateOf(0f) }
-
     val state = AudioDeckStateHolder.state
+
+    var isDragging by remember { mutableStateOf(false) }
+    var dragPosition by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(state.trackId, state.title, state.artist) {
+        isDragging = false
+        dragPosition = state.position.toFloat()
+    }
+
+    val maxDuration = state.duration.toFloat().coerceAtLeast(0f)
+    val isSeekable = maxDuration > 0f
+    val safeRangeEnd = if (isSeekable) maxDuration else 1f
+    val safeRange = 0f..safeRangeEnd
+
+    val currentPosition = if (isDragging) dragPosition else state.position.toFloat()
+    val safeValue = currentPosition.coerceIn(safeRange.start, safeRange.endInclusive)
 
     val artwork = remember(state.artwork) {
         decodeArtwork(state.artwork)
@@ -245,16 +260,19 @@ fun AudioDeckScreen() {
         }
 
         Slider(
-            value = seekPosition,
+            value = safeValue,
             onValueChange = { value ->
-                seekPosition = value
+                isDragging = true
+                dragPosition = value
             },
             onValueChangeFinished = {
-                AudioDeckCommandHolder.sendSeek(
-                    seekPosition.toDouble()
-                )
+                isDragging = false
+                val targetPosition = dragPosition.toDouble()
+                AudioDeckCommandHolder.sendSeek(targetPosition)
+                AudioDeckStateHolder.updatePosition(targetPosition)
             },
-            valueRange = 0f..state.duration.toFloat(),
+            valueRange = safeRange,
+            enabled = isSeekable && state.connected,
             modifier = Modifier.fillMaxWidth(0.8f)
         )
 
