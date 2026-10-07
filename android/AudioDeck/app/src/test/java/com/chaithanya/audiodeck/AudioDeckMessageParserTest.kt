@@ -200,4 +200,64 @@ class AudioDeckMessageParserTest {
         val state = AudioDeckMessageParser.parse(json, AudioDeckState())
         assertNull(state)
     }
+
+    @Test
+    fun seekSynchronization_stalePositionRejected_synchronizedPositionAccepted() {
+        AudioDeckStateHolder.clearPendingSeek()
+        val current = AudioDeckState(
+            connected = true,
+            title = "Song A",
+            duration = 200.0,
+            position = 30.0
+        )
+        AudioDeckStateHolder.update(current)
+
+        // User seeks to 90.0s
+        AudioDeckStateHolder.startSeek(90.0)
+        assertEquals(90.0, AudioDeckStateHolder.state.position, 0.001)
+
+        // Stale in-flight position arrives (30.5s)
+        val staleJson = """{"type": "position", "position": 30.5, "duration": 200.0}"""
+        val afterStale = AudioDeckMessageParser.parse(staleJson, AudioDeckStateHolder.state)!!
+
+        // Must reject 30.5 and retain 90.0!
+        assertEquals(90.0, afterStale.position, 0.001)
+
+        // Authoritative synchronized position arrives from PC (90.2s)
+        val syncJson = """{"type": "position", "position": 90.2, "duration": 200.0}"""
+        val afterSync = AudioDeckMessageParser.parse(syncJson, AudioDeckStateHolder.state)!!
+
+        // Must accept 90.2 and clear pending seek
+        assertEquals(90.2, afterSync.position, 0.001)
+        assertNull(AudioDeckStateHolder.pendingSeekPosition)
+
+        // Subsequent position updates advance normally
+        val nextJson = """{"type": "position", "position": 91.2, "duration": 200.0}"""
+        val afterNext = AudioDeckMessageParser.parse(nextJson, afterSync)!!
+        assertEquals(91.2, afterNext.position, 0.001)
+    }
+
+    @Test
+    fun seekSynchronization_trackChangeClearsPendingSeek() {
+        AudioDeckStateHolder.clearPendingSeek()
+        val current = AudioDeckState(
+            connected = true,
+            title = "Song A",
+            duration = 200.0,
+            position = 30.0
+        )
+        AudioDeckStateHolder.update(current)
+
+        // User seeks to 90.0s
+        AudioDeckStateHolder.startSeek(90.0)
+
+        // Track changes to Song B
+        val trackJson = """{"type": "track", "title": "Song B", "duration": 150.0}"""
+        val newTrackState = AudioDeckMessageParser.parse(trackJson, AudioDeckStateHolder.state)!!
+
+        // Pending seek must be cleared and position reset to 0.0
+        assertNull(AudioDeckStateHolder.pendingSeekPosition)
+        assertEquals(0.0, newTrackState.position, 0.001)
+        assertEquals("Song B", newTrackState.title)
+    }
 }

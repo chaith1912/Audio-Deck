@@ -17,6 +17,7 @@ object AudioDeckMessageParser {
             when (json.optString("type")) {
 
                 "state" -> {
+                    AudioDeckStateHolder.clearPendingSeek()
                     val artworkStr = if (json.has("artwork") && !json.isNull("artwork")) {
                         json.optString("artwork").takeIf { it.isNotEmpty() && it != "null" }
                     } else {
@@ -38,6 +39,7 @@ object AudioDeckMessageParser {
                 }
 
                 "track" -> {
+                    AudioDeckStateHolder.clearPendingSeek()
                     val artworkStr = if (json.has("artwork") && !json.isNull("artwork")) {
                         json.optString("artwork").takeIf { it.isNotEmpty() && it != "null" }
                     } else {
@@ -66,10 +68,13 @@ object AudioDeckMessageParser {
                 }
 
                 "position" -> {
+                    val rawPos = json.optDouble("position", currentState.position).coerceAtLeast(0.0)
+                    val rawDur = json.optDouble("duration", currentState.duration).coerceAtLeast(0.0)
+                    val resolvedPos = AudioDeckStateHolder.filterIncomingPosition(rawPos)
                     currentState.copy(
                         connected = true,
-                        position = json.optDouble("position", currentState.position).coerceAtLeast(0.0),
-                        duration = json.optDouble("duration", currentState.duration).coerceAtLeast(0.0)
+                        position = resolvedPos,
+                        duration = rawDur
                     )
                 }
 

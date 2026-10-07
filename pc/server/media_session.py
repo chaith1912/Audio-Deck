@@ -280,6 +280,9 @@ class MediaSessionReader:
             position_ticks = int(position * 10_000_000)
             await session.try_change_playback_position_async(position_ticks)
 
+            self.base_position = max(0.0, float(position))
+            self.base_time = time.monotonic()
+
             print(f"[Control] Seeked to {position:.2f}s.")
             return True
         

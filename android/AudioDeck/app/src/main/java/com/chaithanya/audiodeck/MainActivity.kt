@@ -115,21 +115,53 @@ object AudioDeckStateHolder {
     )
         private set
 
+    var pendingSeekPosition: Double? = null
+        private set
+    var pendingSeekTimeMs: Long = 0L
+        private set
+
     fun update(newState: AudioDeckState) {
         state = newState.copy(
             connected = true
         )
     }
 
-    fun updatePosition(position: Double) {
+    fun startSeek(position: Double) {
         val clampedPosition = if (state.duration > 0.0) {
             position.coerceIn(0.0, state.duration)
         } else {
             position.coerceAtLeast(0.0)
         }
+        pendingSeekPosition = clampedPosition
+        pendingSeekTimeMs = System.currentTimeMillis()
         state = state.copy(
             position = clampedPosition
         )
+    }
+
+    fun updatePosition(position: Double) {
+        startSeek(position)
+    }
+
+    fun filterIncomingPosition(incomingPosition: Double): Double {
+        val pending = pendingSeekPosition ?: return incomingPosition
+        val elapsed = System.currentTimeMillis() - pendingSeekTimeMs
+        return if (elapsed < 1500L) {
+            if (kotlin.math.abs(incomingPosition - pending) <= 2.5) {
+                pendingSeekPosition = null
+                incomingPosition
+            } else {
+                pending
+            }
+        } else {
+            pendingSeekPosition = null
+            incomingPosition
+        }
+    }
+
+    fun clearPendingSeek() {
+        pendingSeekPosition = null
+        pendingSeekTimeMs = 0L
     }
 
     fun setConnected(connected: Boolean) {
@@ -268,8 +300,8 @@ fun AudioDeckScreen() {
             onValueChangeFinished = {
                 isDragging = false
                 val targetPosition = dragPosition.toDouble()
+                AudioDeckStateHolder.startSeek(targetPosition)
                 AudioDeckCommandHolder.sendSeek(targetPosition)
-                AudioDeckStateHolder.updatePosition(targetPosition)
             },
             valueRange = safeRange,
             enabled = isSeekable && state.connected,
