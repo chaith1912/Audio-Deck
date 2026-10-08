@@ -24,7 +24,8 @@ object AudioDeckMessageParser {
                         status = json.optString("status"),
                         position = json.optDouble("position", 0.0),
                         duration = json.optDouble("duration", 0.0),
-                        artwork = if (json.has("artwork") && !json.isNull("artwork")) json.getString("artwork") else null
+                        artwork = if (json.has("artwork") && !json.isNull("artwork")) json.getString("artwork") else null,
+                        volume = json.optDouble("volume", 1.0)
                     )
                 }
 
@@ -56,6 +57,14 @@ object AudioDeckMessageParser {
                     currentState.copy(
                         position = json.optDouble("position", currentState.position),
                         duration = json.optDouble("duration", currentState.duration)
+                    )
+                }
+
+                "volume" -> {
+
+                    val currentState = AudioDeckStateHolder.state
+                    currentState.copy(
+                        volume = json.optDouble("volume", currentState.volume)
                     )
                 }
 

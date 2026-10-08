@@ -78,23 +78,29 @@ class AudioDeckWebSocket(
         webSocket = null
     }
 
-    fun sendCommand(action: String, position: Double? = null) {
+    fun sendCommand(action: String, position: Double? = null, level: Double? = null) {
 
-        val message = if (position != null) {
-            """
-        {
-            "type": "command",
-            "action": "$action",
-            "position": $position
-        }
-        """.trimIndent()
-        } else {
-            """
-        {
-            "type": "command",
-            "action": "$action"
-        }
-        """.trimIndent()
+        val message = when {
+            position != null -> """
+            {
+                "type": "command",
+                "action": "$action",
+                "position": $position
+            }
+            """.trimIndent()
+            level != null -> """
+            {
+                "type": "command",
+                "action": "$action",
+                "level": $level
+            }
+            """.trimIndent()
+            else -> """
+            {
+                "type": "command",
+                "action": "$action"
+            }
+            """.trimIndent()
         }
 
         webSocket?.send(message)

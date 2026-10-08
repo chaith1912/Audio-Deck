@@ -9,5 +9,6 @@ data class AudioDeckState(
     val status: String = "UNKNOWN",
     val position: Double = 0.0,
     val duration: Double = 0.0,
-    val artwork: String? = null
+    val artwork: String? = null,
+    val volume: Double = 1.0
 )

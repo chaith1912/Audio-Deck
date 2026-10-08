@@ -101,8 +101,8 @@ class MainActivity : ComponentActivity() {
                 )
             }
         )
-        AudioDeckCommandHolder.sendCommand = { action, position ->
-            audioDeckWebSocket.sendCommand(action, position)
+        AudioDeckCommandHolder.sendCommand = { action, position, level ->
+            audioDeckWebSocket.sendCommand(action, position, level)
         }
         audioDeckWebSocket.connect(
             "10.138.245.32"
@@ -146,6 +146,12 @@ object AudioDeckStateHolder {
         )
     }
 
+    fun updateVolume(volume: Double) {
+        state = state.copy(
+            volume = volume
+        )
+    }
+
     fun setConnected(connected: Boolean) {
         state = state.copy(
             connected = connected
@@ -154,22 +160,26 @@ object AudioDeckStateHolder {
 }
 object AudioDeckCommandHolder {
 
-    var sendCommand: ((String, Double?) -> Unit)? = null
+    var sendCommand: ((String, Double?, Double?) -> Unit)? = null
 
     fun sendPlayPause() {
-        sendCommand?.invoke("play_pause", null)
+        sendCommand?.invoke("play_pause", null, null)
     }
 
     fun sendNext() {
-        sendCommand?.invoke("next", null)
+        sendCommand?.invoke("next", null, null)
     }
 
     fun sendPrevious() {
-        sendCommand?.invoke("previous", null)
+        sendCommand?.invoke("previous", null, null)
     }
 
     fun sendSeek(position: Double) {
-        sendCommand?.invoke("seek", position)
+        sendCommand?.invoke("seek", position, null)
+    }
+
+    fun sendVolume(level: Double) {
+        sendCommand?.invoke("volume", null, level)
     }
 }
 fun decodeArtwork(
@@ -214,6 +224,10 @@ fun AudioDeckScreen() {
     var isSeeking by remember { mutableStateOf(false) }
     var pendingSeekTarget by remember { mutableStateOf<Double?>(null) }
 
+    var volumePosition by remember { mutableFloatStateOf(1f) }
+    var isChangingVolume by remember { mutableStateOf(false) }
+    var pendingVolumeTarget by remember { mutableStateOf<Double?>(null) }
+
     val state = AudioDeckStateHolder.state
 
     LaunchedEffect(state.title) {
@@ -227,6 +241,13 @@ fun AudioDeckScreen() {
         }
     }
 
+    LaunchedEffect(pendingVolumeTarget) {
+        if (pendingVolumeTarget != null) {
+            delay(1500)
+            pendingVolumeTarget = null
+        }
+    }
+
     LaunchedEffect(state.position) {
         if (!isSeeking) {
             val target = pendingSeekTarget
@@ -237,6 +258,20 @@ fun AudioDeckScreen() {
                 }
             } else {
                 seekPosition = state.position.toFloat()
+            }
+        }
+    }
+
+    LaunchedEffect(state.volume) {
+        if (!isChangingVolume) {
+            val target = pendingVolumeTarget
+            if (target != null) {
+                if (abs(state.volume - target) < 0.05) {
+                    volumePosition = state.volume.toFloat()
+                    pendingVolumeTarget = null
+                }
+            } else {
+                volumePosition = state.volume.toFloat()
             }
         }
     }
@@ -301,6 +336,26 @@ fun AudioDeckScreen() {
                 isSeeking = false
             },
             valueRange = 0f..maxDuration,
+            modifier = Modifier.fillMaxWidth(0.8f)
+        )
+
+        Text(
+            text = "VOLUME: ${(volumePosition * 100).toInt()}%"
+        )
+
+        Slider(
+            value = volumePosition.coerceIn(0f, 1f),
+            onValueChange = { value ->
+                isChangingVolume = true
+                volumePosition = value
+            },
+            onValueChangeFinished = {
+                val target = volumePosition.toDouble()
+                pendingVolumeTarget = target
+                AudioDeckCommandHolder.sendVolume(target)
+                isChangingVolume = false
+            },
+            valueRange = 0f..1f,
             modifier = Modifier.fillMaxWidth(0.8f)
         )
 
