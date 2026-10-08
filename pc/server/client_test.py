@@ -22,7 +22,6 @@ async def main():
 
             print(f"RECEIVED: {message}")
 
-
 if __name__ == "__main__":
 
     try:

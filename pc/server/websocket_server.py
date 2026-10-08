@@ -1,7 +1,3 @@
-import asyncio
-import json
-from turtle import position
-
 import websockets
 
 from media_session import MediaSessionReader
@@ -11,6 +7,7 @@ from protocol import (
     track_message,
     playback_message,
     position_message,
+    volume_message,
     parse_command,
 )
 
@@ -29,6 +26,7 @@ class AudioDeckWebSocketServer:
         self.current_state = None
         self.current_track = None
         self.current_status = None
+        self.current_volume = None
 
     async def initialize(self):
         print("Initializing Audio Deck...")
@@ -225,6 +223,32 @@ class AudioDeckWebSocketServer:
                         print("[Command] Seek failed.")
 
                 # -----------------------------------
+                # Volume
+                # -----------------------------------
+
+                elif command_type == "volume":
+
+                    level = command.get("level")
+
+                    if level is None:
+                        print("[Command] Volume level missing.")
+                        continue
+
+                    success = self.media_reader.set_volume(float(level))
+
+                    if success:
+                        print(f"[Command] Volume changed: {level}")
+                        state = await self.media_reader.get_current_state()
+                        if state is not None:
+                            self.current_state = state
+                            self.current_volume = state.get("volume")
+                            await self.send_to_all(
+                                volume_message(state)
+                            )
+                    else:
+                        print("[Command] Volume change failed.")
+
+                # -----------------------------------
                 # Unknown Command
                 # -----------------------------------
 
@@ -254,6 +278,7 @@ class AudioDeckWebSocketServer:
         )
 
         status = state["status"]
+        volume = state.get("volume")
 
         # ---------------------------------------
         # First state received.
@@ -264,6 +289,7 @@ class AudioDeckWebSocketServer:
             self.current_state = state
             self.current_track = track
             self.current_status = status
+            self.current_volume = volume
 
             await self.send_to_all(
                 state_message(state)
@@ -293,6 +319,20 @@ class AudioDeckWebSocketServer:
 
             await self.send_to_all(
                 playback_message(state)
+            )
+
+        # ---------------------------------------
+        # Volume changed.
+        # ---------------------------------------
+
+        if volume is not None and (
+            self.current_volume is None or abs(volume - self.current_volume) >= 0.01
+        ):
+
+            self.current_volume = volume
+
+            await self.send_to_all(
+                volume_message(state)
             )
 
         # Always keep the latest state internally.

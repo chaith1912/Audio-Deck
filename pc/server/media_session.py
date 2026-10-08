@@ -7,6 +7,9 @@ from winsdk.windows.media.control import (
     GlobalSystemMediaTransportControlsSessionPlaybackStatus,
 )
 from winsdk.windows.storage.streams import DataReader
+import comtypes
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
 
 STATUS_NAMES = {
@@ -244,6 +247,7 @@ class MediaSessionReader:
             "position": position,
             "duration": duration,
             "artwork": self.artwork_cache,
+            "volume": self.get_volume(),
         }
     async def toggle_play_pause(self):
         session = await self.get_brave_session()
@@ -313,6 +317,37 @@ class MediaSessionReader:
         
         except Exception as e:
             print(f"[Control] Seek failed: {e}")
+            return False
+
+    def get_volume(self):
+        try:
+            comtypes.CoInitialize()
+            devices = AudioUtilities.GetSpeakers()
+            if hasattr(devices, "EndpointVolume"):
+                ev = devices.EndpointVolume
+            else:
+                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                ev = interface.QueryInterface(IAudioEndpointVolume)
+            return float(ev.GetMasterVolumeLevelScalar())
+        except Exception as e:
+            print(f"[Volume] Error reading volume: {e}")
+            return 1.0
+
+    def set_volume(self, level):
+        try:
+            comtypes.CoInitialize()
+            clamped = max(0.0, min(float(level), 1.0))
+            devices = AudioUtilities.GetSpeakers()
+            if hasattr(devices, "EndpointVolume"):
+                ev = devices.EndpointVolume
+            else:
+                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                ev = interface.QueryInterface(IAudioEndpointVolume)
+            ev.SetMasterVolumeLevelScalar(clamped, None)
+            print(f"[Volume] Set volume to {clamped:.2f}")
+            return True
+        except Exception as e:
+            print(f"[Volume] Error setting volume: {e}")
             return False
 
 async def test():

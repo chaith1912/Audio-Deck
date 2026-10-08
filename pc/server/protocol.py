@@ -30,6 +30,13 @@ def position_message(state):
     }
 
 
+def volume_message(state):
+    return {
+        "type": "volume",
+        "volume": state["volume"],
+    }
+
+
 def state_message(state):
     return {
         "type": "state",
@@ -41,6 +48,7 @@ def state_message(state):
         "position": state["position"],
         "duration": state["duration"],
         "artwork": state["artwork"],
+        "volume": state.get("volume", 1.0),
     }
 
 def welcome_message():
@@ -69,4 +77,5 @@ def parse_command(message):
     return {
         "action": data.get("action"),
         "position": data.get("position"),
+        "level": data.get("level", data.get("volume")),
     }
